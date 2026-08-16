@@ -619,7 +619,9 @@
         var emailInput = document.getElementById("waitlist-email");
         var statusEl = form && form.querySelector(".waitlist-status");
         var button = form && form.querySelector("button");
-        var endpoint = "https://formsubmit.co/ajax/" + atob("Ym9yaXNAZGUtbmV2ZS5ubA==");
+        var supabaseUrl = "https://nfxdiqkjbozuaipzyhdt.supabase.co";
+        var supabaseAnonKey =
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5meGRpcWtqYm96dWFpcHp5aGR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NzU2MDAsImV4cCI6MjEwMjA1MTYwMH0.y3_iYf8wdhNrKN7pzOZWmskhzUNdYf2eopH1-dTfdww";
 
         function setStatus(message, kind) {
           if (!statusEl) return;
@@ -645,27 +647,21 @@
             button.disabled = true;
             setStatus("Sending…");
 
-            fetch(endpoint, {
+            fetch(supabaseUrl + "/rest/v1/rpc/subscribe_mailing_list", {
               method: "POST",
               headers: {
+                apikey: supabaseAnonKey,
+                Authorization: "Bearer " + supabaseAnonKey,
                 "Content-Type": "application/json",
-                Accept: "application/json",
               },
               body: JSON.stringify({
-                email: email,
-                _subject: "StreamVerse Studio — mailing list",
-                _template: "table",
-                _captcha: "false",
+                p_email: email,
+                p_source: "coming-soon",
               }),
             })
               .then(function (response) {
-                return response.json().then(function (data) {
-                  return { ok: response.ok, data: data };
-                });
-              })
-              .then(function (result) {
-                if (!result.ok) {
-                  throw new Error((result.data && result.data.message) || "Signup failed");
+                if (!response.ok) {
+                  throw new Error("Signup failed");
                 }
                 form.reset();
                 setStatus("You're on the list.", "is-ok");
