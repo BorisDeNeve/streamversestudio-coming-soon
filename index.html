@@ -58,7 +58,7 @@
 
       body {
         font-family: Syne, system-ui, sans-serif;
-        overflow: hidden;
+        overflow-x: hidden;
         cursor: none;
       }
 
@@ -299,6 +299,111 @@
         line-height: 1.7;
       }
 
+      .waitlist {
+        width: min(26rem, 100%);
+        margin: 2.5rem auto 0;
+        cursor: auto;
+      }
+
+      .waitlist label {
+        display: block;
+        margin-bottom: 0.85rem;
+        color: var(--mist);
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+      }
+
+      .waitlist-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid rgb(243 236 225 / 0.28);
+      }
+
+      .waitlist input[type="email"] {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: var(--ivory);
+        font-family: inherit;
+        font-size: 0.95rem;
+        outline: none;
+        cursor: text;
+      }
+
+      .waitlist input[type="email"]::placeholder {
+        color: rgb(183 174 162 / 0.45);
+      }
+
+      .waitlist input[type="email"]:focus-visible {
+        outline: none;
+      }
+
+      .waitlist button {
+        flex-shrink: 0;
+        border: 0;
+        padding: 0.2rem 0;
+        background: none;
+        color: var(--teal);
+        font-family: inherit;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .waitlist button:hover,
+      .waitlist button:focus-visible {
+        color: var(--ivory);
+      }
+
+      .waitlist button:focus-visible {
+        outline: 1px solid var(--teal);
+        outline-offset: 4px;
+      }
+
+      .waitlist button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+
+      .waitlist-note,
+      .waitlist-status {
+        margin: 0.75rem 0 0;
+        font-size: 0.72rem;
+        line-height: 1.5;
+      }
+
+      .waitlist-note {
+        color: rgb(183 174 162 / 0.55);
+      }
+
+      .waitlist-status {
+        min-height: 1.1em;
+        font-size: 0.85rem;
+      }
+
+      .waitlist-status.is-ok {
+        color: var(--teal);
+      }
+
+      .waitlist-status.is-err {
+        color: var(--amber);
+      }
+
+      .hp {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
       .soon {
         position: absolute;
         top: 1.6rem;
@@ -422,7 +527,8 @@
         }
 
         .lede,
-        .philosophy {
+        .philosophy,
+        .waitlist {
           max-width: 20rem;
         }
       }
@@ -477,6 +583,31 @@
           Communities come first. Technology should help creators grow,
           not make things more complicated.
         </p>
+        <form class="waitlist" id="waitlist" novalidate>
+          <label for="waitlist-email">Get app updates</label>
+          <div class="waitlist-row">
+            <input
+              id="waitlist-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              inputmode="email"
+              required
+              placeholder="you@email.com"
+            />
+            <button type="submit">Notify me</button>
+          </div>
+          <input
+            class="hp"
+            type="text"
+            name="_gotcha"
+            tabindex="-1"
+            autocomplete="off"
+            aria-hidden="true"
+          />
+          <p class="waitlist-note">Launch updates only. No spam.</p>
+          <p class="waitlist-status" role="status" aria-live="polite"></p>
+        </form>
       </main>
 
       <footer>© StreamVerse Studio</footer>
@@ -484,6 +615,70 @@
 
     <script>
       (function () {
+        var form = document.getElementById("waitlist");
+        var emailInput = document.getElementById("waitlist-email");
+        var statusEl = form && form.querySelector(".waitlist-status");
+        var button = form && form.querySelector("button");
+        var endpoint = "https://formsubmit.co/ajax/" + atob("Ym9yaXNAZGUtbmV2ZS5ubA==");
+
+        function setStatus(message, kind) {
+          if (!statusEl) return;
+          statusEl.textContent = message;
+          statusEl.classList.remove("is-ok", "is-err");
+          if (kind) statusEl.classList.add(kind);
+        }
+
+        if (form && emailInput && button) {
+          form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var email = emailInput.value.trim();
+            var honey = form.querySelector("[name='_gotcha']");
+
+            if (honey && honey.value) return;
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+              setStatus("Enter a valid email.", "is-err");
+              emailInput.focus();
+              return;
+            }
+
+            button.disabled = true;
+            setStatus("Sending…");
+
+            fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify({
+                email: email,
+                _subject: "StreamVerse Studio — mailing list",
+                _template: "table",
+                _captcha: "false",
+              }),
+            })
+              .then(function (response) {
+                return response.json().then(function (data) {
+                  return { ok: response.ok, data: data };
+                });
+              })
+              .then(function (result) {
+                if (!result.ok) {
+                  throw new Error((result.data && result.data.message) || "Signup failed");
+                }
+                form.reset();
+                setStatus("You're on the list.", "is-ok");
+              })
+              .catch(function () {
+                setStatus("Could not subscribe. Try again in a moment.", "is-err");
+              })
+              .finally(function () {
+                button.disabled = false;
+              });
+          });
+        }
+
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         if (window.matchMedia("(max-width: 700px)").matches) return;
 
